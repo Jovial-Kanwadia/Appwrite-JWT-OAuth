@@ -11,6 +11,7 @@ const createAppwriteClient = async(type: any, session: any) => {
         .setProject(process.env.APPWRITE_PROJECT_ID as string);
 
     if(type === 'admin'){
+        // console.log('Initializing Appwrite client with admin API key', process.env.APPWRITE_API_KEY);
         client.setKey(process.env.APPWRITE_API_KEY as string);
     }
     if(type === 'session' && session){

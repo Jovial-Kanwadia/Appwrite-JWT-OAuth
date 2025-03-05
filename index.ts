@@ -139,31 +139,55 @@ app.post('/login', async (req, res): Promise<void> => {
 });
 
 
-app.post('/logout', async (req, res): Promise<void> => {
-    // Expect header "Authorization: Bearer <session-token>"
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        res.status(400).json({ error: 'Authorization header missing or malformed.' });
-        return;
+app.get('/logout', (req: Request, res: Response): void => {
+    const button = `
+        <form action="/logout" method="POST">
+            <button type="submit" style="padding: 10px 20px; cursor: pointer;">
+                Logout
+            </button>
+        </form>
+    `;
+    res.set('Content-Type', 'text/html');
+    res.status(200).send(button);
+});
+
+app.post('/logout', async (req: Request, res: Response): Promise<void> => {
+    const sessionCookie = req.cookies.session;
+    let sessionToken: string | null = null;
+
+    if (sessionCookie) {
+        sessionToken = sessionCookie;
+    } else {
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            res.status(400).json({ error: 'No session found.' });
+            return;
+        }
+        sessionToken = authHeader.split(" ")[1];
     }
-    
-    // Extract the session token from the header.
-    const sessionToken = authHeader.split(" ")[1];
-    
+
     try {
-        // Initialize the Appwrite client in session mode using the session token.
         const appwrite = await createAppwriteClient('session', sessionToken);
-        
-        // Delete the current session.
         await appwrite.account.deleteSession('current');
-        
-        res.status(200).json({ message: 'Logged out successfully.' });
+
+        if (sessionCookie) {
+            res.clearCookie('session', {
+                path: '/',
+                httpOnly: true,
+                secure: true,
+                sameSite: 'strict'
+            });
+        }
+
+        res.status(200).send(`
+            <p>Logged out successfully</p>
+            <a href="/">Return home</a>
+        `);
     } catch (error: any) {
-        console.error("Error logging out:", error);
-        res.status(500).json({
-            error: 'Error logging out',
-            details: error.message,
-        });
+        res.status(500).send(`
+            <p>Error logging out: ${error.message}</p>
+            <a href="/">Return home</a>
+        `);
     }
 });
 
